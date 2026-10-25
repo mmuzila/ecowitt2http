@@ -12,7 +12,7 @@ app = Flask(__name__)
 async def fetch_weather_data(endpoint, params=None):
     """Fetch data from backend API"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'http://app:8080/api/weather/{endpoint}', params=params) as response:
+        async with session.get(f'http://ecowitt2http-backend:8080/api/weather/{endpoint}', params=params) as response:
             return await response.json()
 
 def create_line_chart(df, y_column, title):

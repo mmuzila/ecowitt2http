@@ -1,0 +1,25 @@
+:80 {
+    # Backend API
+    handle /api* {
+        reverse_proxy ecowitt2http-backend:8080
+        log {
+            output stdout
+            format json
+        }
+    }
+
+    # Ecowitt data endpoint
+    handle /data* {
+        reverse_proxy ecowitt2http-backend:8080
+        log {
+            output stdout
+            format json
+        }
+    }
+
+    # Frontend (zvyšné požiadavky)
+    handle {
+        reverse_proxy ecowitt2http-frontend:5000
+    }
+}
+

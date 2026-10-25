@@ -1,70 +1,94 @@
 version: '3.8'
 
 services:
-  nginx:
+  ecowitt2http-proxy:
+    container_name: ecowitt2http-proxy
+    image: ecowitt2http-proxy
     build:
-      context: ./nginx
+      context: ./caddy
       dockerfile: Dockerfile
-      args:
-        NGINX_VERSION: ${NGINX_VERSION:-1.24-alpine}
-    ports:
-      - "${NGINX_PORT:-80}:80"
+    pull_policy: build
     depends_on:
-      - frontend
-      - app
-    restart: unless-stopped
+      - ecowitt2http-frontend
+      - ecowitt2http-backend
+    restart: always
+    environment:
+      TZ: "Europe/Prague"
+    networks:
+      - http
+      - ecowitt2http
 
-  app:
+  ecowitt2http-backend:
+    container_name: ecowitt2http-backend
+    image: ecowitt2http-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
+    pull_policy: build
     expose:
       - "8080"
-    volumes:
-      - ./backend:/app
     depends_on:
-      - timescaledb
-      - mqtt
+      - ecowitt2http-timescaledb
+      - ecowitt2http-mqtt
     environment:
-      - TZ=UTC
-    restart: unless-stopped
+      TZ: "Europe/Prague"
+    restart: always
+    networks:
+      - ecowitt2http
 
-  frontend:
+  ecowitt2http-frontend:
+    container_name: ecowitt2http-frontend
+    image: ecowitt2http-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    pull_policy: build
     expose:
       - "5000"
-    volumes:
-      - ./frontend:/app
     depends_on:
-      - app
+      - ecowitt2http-backend
     environment:
-      - TZ=UTC
-    restart: unless-stopped
+      TZ: "Europe/Prague"
+    restart: always
+    networks:
+      - ecowitt2http
 
-  timescaledb:
+  ecowitt2http-timescaledb:
+    container_name: ecowitt2http-timescaledb
     image: timescale/timescaledb:latest-pg14
     expose:
       - "5432"
     environment:
+      - TZ="Europe/Prague"
       - POSTGRES_DB=weather_data
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=your_password
     volumes:
-      - timescaledb_data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - ${DATA_PATH}/timescaledb:/var/lib/postgresql/data:z
+    restart: always
+    networks:
+      - ecowitt2http
 
-  mqtt:
+  ecowitt2http-mqtt:
+    container_name: ecowitt2http-mqtt
     image: eclipse-mosquitto:latest
     expose:
       - "1883"
       - "9001"
+    security_opt:
+      - label=disable
     volumes:
-      - ./backend/mqtt/config:/mosquitto/config
-      - ./backend/mqtt/data:/mosquitto/data
-      - ./backend/mqtt/log:/mosquitto/log
-    restart: unless-stopped
+      - ${DATA_PATH}/mqtt/config:/mosquitto/config:z
+      - ${DATA_PATH}/mqtt/data:/mosquitto/data:z
+      - ${DATA_PATH}/mqtt/log:/mosquitto/log:z
+    restart: always
+    environment:
+      TZ: "Europe/Prague"
+    networks:
+      - ecowitt2http
 
-volumes:
-  timescaledb_data: 
+networks:
+  http:
+    external: true
+  ecowitt2http:
+    external: false
